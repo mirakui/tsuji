@@ -10,7 +10,7 @@ Local file-based inter-session chat CLI for Claude Code.
 - メッセージ ID は ULID（辞書順＝時系列順）。
 - 並行 send は `flock(2)` ＋ `O_APPEND` で破損ゼロ。
 - 受信は `tsuji read --since <ULID>` の差分取得。常駐デーモンなし。
-- 受信側 Claude が継続的にポーリングするための `/tsuji-listen` skill が `claude-plugin/` に同梱。`/loop` で自己再起動する。
+- 受信側 Claude のセッション開始時に `tsuji read --follow --from-now` をバックグラウンド起動する Claude Code plugin（`claude-plugin/` の `monitors/monitors.json`）を同梱。新着行は Monitor tool が surface するため、`/loop` や skill 起動忘れの心配がない。チャンネル名は plugin の `user_config.channel` で設定する。
 
 ## インストール
 

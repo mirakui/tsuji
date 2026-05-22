@@ -31,4 +31,5 @@
 
 ## Notes
 
-- 2026-05-22 `/speckit-clarify` セッションで 5 件の質問に回答し、ID 生成方式（ULID）、リスナー支援（Claude skill + `/loop`）、保存場所（`$XDG_DATA_HOME/tsuji/` + `--root`/`TSUJI_ROOT`）、本文形式（改行可テキスト）、`read` 出力形式（デフォルト JSON Lines + `--pretty`）を解決。全 [NEEDS CLARIFICATION] マーカは除去済み。
+- 2026-05-22 `/speckit-clarify` セッションで 5 件の質問に回答し、ID 生成方式（ULID）、リスナー支援（当初は Claude skill + `/loop`）、保存場所（`$XDG_DATA_HOME/tsuji/` + `--root`/`TSUJI_ROOT`）、本文形式（改行可テキスト）、`read` 出力形式（デフォルト JSON Lines + `--pretty`）を解決。全 [NEEDS CLARIFICATION] マーカは除去済み。
+- 2026-05-22 追加 clarify (Q6): リスナー実装は plugin-declared Monitor tool + `tsuji read --follow --from-now` に切替（`/loop`/skill 廃止、FR-014 改訂、FR-019 新設）。FR-013 はそのまま。

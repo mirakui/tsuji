@@ -85,17 +85,26 @@ wc -l ~/.local/share/tsuji/stress.jsonl   # → 100
 jq -c '.' ~/.local/share/tsuji/stress.jsonl > /dev/null  # 0 件の parse error
 ```
 
-## 6. Claude skill による listener（FR-014）
+## 6. Claude plugin の Monitor による listener（FR-014）
 
 ```text
 # 受信側の Claude Code セッション内で:
-/plugin install tsuji   # 仮称。marketplace 経由でインストール
-/tsuji-listen default   # default チャンネルの listen を開始
-# 以降、Claude は /loop を使って自発的に再起動・ポーリングし、
-# 新着メッセージが届いたら現在の会話コンテキストに surface する
+/plugin install <path-or-marketplace-id>   # claude-plugin/ ディレクトリを plugin として登録
+# 初回 install で user_config.channel を求められるので、listen するチャンネル名を入力
+# （未入力なら default = "default"）
+
+# plugin が有効な状態でセッションを開始すると、Monitor tool が
+#   tsuji read --channel <user_config.channel> --follow --from-now
+# をバックグラウンドで起動する。/tasks や /plugin 画面で生きていることを確認できる。
+
+# 別シェルから送信
+tsuji send --channel default --as outsider --body 'are you awake?'
+
+# Monitor が新着 JSON Lines を受信側 Claude のセッションに surface し、
+# Claude が応答できる。過去ログ（--from-now）は流れないのでコンテキストが汚れない。
 ```
 
-skill 単体での手動検証は `tsuji read --since` の挙動 + Claude Code の `/loop` の挙動を分けてテストできる。
+CLI 単体の挙動は `tsuji read --channel <ch> --follow --from-now` を任意のターミナルで起動して再現できる。
 
 ## 7. ロールバック
 

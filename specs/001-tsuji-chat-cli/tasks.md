@@ -134,26 +134,29 @@ Single Rust crate at repository root: `src/`, `tests/`, `claude-plugin/` per pla
 
 - [X] T032 [P] [US4] Author e2e test asserting `--pretty` outputs lines matching `^\[<rfc3339>\] <from>: <first-body-line>$` (plus continuation lines for multi-line body) in tests/pretty_and_follow.rs
 - [X] T033 [P] [US4] Author e2e test that spawns `tsuji read --follow` as a child process, sleeps 500ms, sends a message from another invocation, then asserts the child's stdout contains the new message within 2 seconds in tests/pretty_and_follow.rs
+- [X] T033b [P] [US4] Author e2e tests that (a) spawn `tsuji read --follow --from-now` and assert pre-existing seed messages are NOT echoed, (b) new sends still surface within 2 seconds, and (c) `tsuji read --from-now` without `--follow` exits non-zero, all in tests/pretty_and_follow.rs
 
 ### Implementation for User Story 4
 
 - [X] T034 [US4] Implement `pretty_format(msg: &Message) -> String` honoring multi-line bodies (continuation lines indented) in src/pretty.rs
 - [X] T035 [US4] Add `--follow` and `--pretty` flags to `tsuji read` in src/cli/read.rs (clap definitions only)
 - [X] T036 [US4] Implement `--follow` polling loop (poll interval ≤ 2 s; SIGINT-safe shutdown via `ctrlc` crate or signal-hook; if a new dep is needed add it in Cargo.toml first) in src/cli/read.rs and rerun T032–T033 until GREEN
+- [X] T036b [US4] Implement `--from-now` flag (clap `requires = "follow"`; on entry establish cursor at the current tail and skip emitting existing messages) in src/cli/read.rs and rerun T033b until GREEN
 
 **Checkpoint**: 全 4 ユーザストーリーが独立にテスト可能な状態。
 
 ---
 
-## Phase 7: FR-014 — Claude skill / marketplace bundle
+## Phase 7: FR-014 — Claude plugin + Monitor tool bundle
 
-**Goal**: 受信側 Claude が `/loop` で自発再起動しながらポーリングする listener skill を、Claude Code plugin marketplace 形式で同梱する。
+**Goal**: 受信側 Claude のセッション開始時に Monitor tool が `tsuji read --follow --from-now` をバックグラウンド起動し、新着行を surface するための plugin を同梱する。
 
-**Independent Test**: ビルド済み `tsuji` を PATH に通した状態で、Claude Code セッションが `claude-plugin/` を読み込んで `/tsuji-listen default` を発火、`/loop` 経由で再起動が観測できること。
+**Independent Test**: ビルド済み `tsuji` を PATH に通した状態で、Claude Code セッションが `claude-plugin/` を plugin 認識し、Monitor が起動して別シェルからの `tsuji send` を `/tasks` 上で観測できること。
 
-- [X] T037 [P] Author Claude Code plugin manifest with required fields (name, version, description, entry skill) in claude-plugin/plugin.json
-- [X] T038 [P] Author `/tsuji-listen` skill markdown (reads cursor file, calls `tsuji read --since`, surfaces new bodies, schedules wake-up via `/loop` with 60–300s delay) in claude-plugin/skills/tsuji-listen.md
-- [ ] T039 Smoke-test the skill by installing the plugin into a local Claude Code session, listening on a `smoke` channel, sending a message from another shell, and confirming `/loop` surfaces it; record observations in .cctmp/scratch/skill-smoke.md
+- [X] T037 [P] Author Claude Code plugin manifest with name/version/description plus `userConfig.channel` and `experimental.monitors` pointing at `monitors/monitors.json` in claude-plugin/plugin.json
+- [X] T038 [P] Author plugin-declared Monitor that runs `tsuji read --channel ${user_config.channel} --follow --from-now` with `when: "always"` in claude-plugin/monitors/monitors.json
+- [X] T038b Remove the legacy `/loop`-based skill (`trash claude-plugin/skills/tsuji-listen.md` and the now-empty `claude-plugin/skills/`)
+- [ ] T039 Smoke-test the Monitor by installing `claude-plugin/` into a local Claude Code session, setting `user_config.channel` to `smoke`, sending a message from another shell, and confirming the Monitor surfaces it (and that pre-existing messages are NOT replayed); record observations in .cctmp/scratch/monitor-smoke.md
 
 ---
 
@@ -190,7 +193,7 @@ Single Rust crate at repository root: `src/`, `tests/`, `claude-plugin/` per pla
 - **Phase 4 (US2, P2)**: Depends on Phase 2. Reuses writer/reader from Phase 3 (T024 extends T016, T025 reuses reader infra) — best run after Phase 3.
 - **Phase 5 (US3, P2)**: Depends on Phase 2; lightly extends reader from Phase 3 (T031 extends T017) — best after Phase 3.
 - **Phase 6 (US4, P3)**: Depends on Phase 2; lightly extends reader from Phase 3 — best after Phase 3.
-- **Phase 7 (FR-014 plugin)**: Depends on Phase 3 (skill calls `tsuji read --since`, which exists after Phase 5).
+- **Phase 7 (FR-014 plugin + Monitor)**: Depends on Phase 6 (Monitor invokes `tsuji read --follow --from-now`, which exists after T036b).
 - **Phase 8 (SC-003 concurrency)**: Depends on Phase 3 (writer implemented).
 - **Phase 9 (Polish)**: Depends on all desired phases complete.
 
@@ -253,7 +256,7 @@ Task: "Wire into main dispatch in src/main.rs"     # T020
 2. US1 → MVP リリース。
 3. US2（チャンネル）→ 用途別運用が可能に。
 4. US3（カーソル）→ コンテキスト効率が改善し、Claude セッションでの実運用に耐える。
-5. US4（観察）＋ Phase 7（listener skill）→ 「人間が見守りつつ Claude 同士が会話」の本来の体験が完成。
+5. US4（観察）＋ Phase 7（plugin + Monitor tool）→ 「人間が見守りつつ Claude 同士が会話」の本来の体験が完成。
 6. Phase 8（並行ストレス）＋ Phase 9（Polish）→ 1.0 リリース。
 
 ### TDD ループ (t_wada 流)

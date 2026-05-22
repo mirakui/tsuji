@@ -17,6 +17,7 @@
 - Q: チャンネルログの保存場所／検索規約はどうしますか？ → A: ユーザ global なディレクトリ（`$XDG_DATA_HOME/tsuji/`、無ければ `~/.local/share/tsuji/`）をデフォルトとし、`--root <path>` オプションおよび `TSUJI_ROOT` 環境変数による上書きを許す。
 - Q: メッセージ本文の形式は v1 でどこまで許す？ → A: 改行を含むプレーンテキストのみ。本文は JSON 文字列としてエスケープ保存し、`read` 時に復元する。添付ファイル参照や構造化メタデータ（key-value）は v1 範囲外。
 - Q: `tsuji read` の出力フォーマットは？ → A: デフォルトを JSON Lines（1 行 1 メッセージ、`id` / `ts` / `from` / `body` フィールド）とし、`--pretty` で人間可読フォーマットに切り替えられる。
+- Q: FR-014 のリスナー実装は `/loop`（ScheduleWakeup）のままにするか？ → A: 切り替える。Claude Code v2.1.105+ の plugin-declared Monitor tool（`claude-plugin/monitors/monitors.json`）を採用し、プラグイン有効時にバックグラウンドで `tsuji read --channel <ch> --follow --from-now` を走らせ、新着行を Claude セッションに surface する。CLI 側にも `--from-now` を新設し、Monitor 起動時に過去ログを emit しない（FR-019）。`/loop` + `ScheduleWakeup` + skill 形式は廃止。FR-013（CLI 自体は daemon 同梱なし）はそのまま。
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -89,7 +90,7 @@
 - **不正な JSON 行**: 何らかの理由でログファイルに不正な行が混入した場合、`tsuji read` は壊れた行をスキップしつつ正常な行は出力する（クラッシュしない）。
 - **メッセージ ID の重複**: 同時送信時に同一 ID が生成される事故が起きないこと。ID 形式は ULID（26 文字、時刻＋ランダム）を採用し、辞書順＝時系列順となる性質を `--since` のカーソル比較に利用する。
 - **巨大ログ**: チャンネルログが何 MB／何万行と肥大化した場合の `tsuji read --since` の応答時間が許容範囲に留まる（ローテーション・圧縮の方針は v1 範囲外、未決事項として記録）。
-- **受信側の取りこぼし**: ポーリング型のため、受信側 Claude が `tsuji read` を叩くのを忘れるとメッセージが永遠に届かない。これに対する補助として、v1 では `/loop` を使うリスナー用 Claude skill を同梱する（FR-014）。skill 起動忘れに対する更なる補助は v1 範囲外。
+- **受信側の取りこぼし**: ポーリング型のため、受信側 Claude が `tsuji read` を叩くのを忘れるとメッセージが永遠に届かない。これに対する補助として、v1 では Claude Code plugin として `tsuji read --follow --from-now` を Monitor tool 経由で自動起動する（FR-014）。Monitor は同梱 plugin のマニフェスト宣言で session 開始時に起動するため、ユーザ／Claude が起動忘れを起こす経路を持たない。
 - **存在しないチャンネル読み込み**: まだ誰も書いたことのないチャンネル名で `tsuji read` を叩いた場合、エラーではなく「メッセージ無し」として安全に応答する。
 - **`--as <name>` 衝突**: 同じセッションが複数の名前を名乗ったり、別セッションが同じ名前を名乗ったりすることを技術的に禁止はしない（名前は単なるラベル）。整合性はユーザ運用に委ねる。
 
@@ -110,11 +111,12 @@
 - **FR-011**: System MUST 認証・権限管理は持たない（同一ユーザ・同一マシン上のローカル運用前提で、信頼境界はファイルシステム権限に委ねる）。
 - **FR-012**: System SHOULD `tsuji send` / `tsuji read` の exit code および stderr で、Claude Code が成功・失敗を判定できるシグナルを返す。
 - **FR-013**: System MUST 受信側が「思い出して読みに行く」ポーリングモデルを基本とし、watch 常駐プロセスは提供しない。
-- **FR-014**: System MUST 受信側 Claude が `tsuji read` を叩き続けるための補助として、v1 に Claude skill（slash command 形式）を同梱する。当該 skill は Claude Code の `/loop`（ダイナミックループ／自己再起動メカニズム）を利用して、受信側セッションが指定チャンネルを継続的にポーリングできるようにする。Stop hook 連携は採用しない。
+- **FR-014**: System MUST 受信側 Claude が新着メッセージを継続的に取得するための補助として、v1 に Claude Code plugin（`claude-plugin/`）を同梱する。plugin は `monitors/monitors.json` で Monitor tool を宣言し、セッション開始時に `tsuji read --channel <user_config.channel> --follow --from-now` をバックグラウンドで起動して、新着行を Claude セッションに surface する。`/loop` や `ScheduleWakeup`、Stop hook 連携は採用しない。
 - **FR-015**: System MUST チャンネルログの保存ルートを、デフォルトで `$XDG_DATA_HOME/tsuji/`（未設定時は `~/.local/share/tsuji/`）に置く。`--root <path>` コマンドラインオプションおよび `TSUJI_ROOT` 環境変数を提供し、その値で上書きできる（優先度: コマンドライン > 環境変数 > デフォルト）。
 - **FR-016**: System MUST 指定された保存ルート配下に存在しないチャンネルへの `send` 時、必要なディレクトリ・ファイルを自動的に作成する（保存ルート自体が存在しない場合も含む）。
 - **FR-017**: System MUST メッセージ本文として改行を含む任意長のプレーンテキストを受理する。本文は JSON Lines の 1 行に収まるように JSON 文字列としてエスケープ保存し、`read` 時には改行を含む元のテキストへ復元して出力する。添付ファイル参照や構造化メタデータ（key-value 拡張フィールド）は v1 では受理しない。
 - **FR-018**: System MUST `tsuji read` の出力形式を切り替える `--pretty` フラグを提供する。`--pretty` 指定時は人間可読フォーマット（少なくともタイムスタンプ・送信者・本文を可読に並べた形）で出力し、未指定時は JSON Lines を出力する。
+- **FR-019**: System MUST `tsuji read --follow` と併用可能な `--from-now` フラグを提供する。`--from-now` 指定時は実行開始時点の末尾までを cursor として確定し、既存メッセージを stdout に emit せず、それ以降に追加された新着メッセージのみを emit する。`--follow` 抜きで `--from-now` を指定した場合は CLI が引数エラー（exit code 非ゼロ）で拒否する。Monitor tool（FR-014）が過去ログをセッションに流し込まないために用いる。
 
 ### Key Entities *(include if feature involves data)*
 

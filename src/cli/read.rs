@@ -29,6 +29,11 @@ pub struct ReadArgs {
     /// After reading existing messages, keep polling for new ones.
     #[arg(long)]
     pub follow: bool,
+
+    /// With --follow, skip the existing tail and surface only messages that
+    /// arrive after this command starts.
+    #[arg(long = "from-now", requires = "follow")]
+    pub from_now: bool,
 }
 
 pub fn run(root: &Path, args: ReadArgs) -> Result<ExitCode> {
@@ -42,12 +47,20 @@ pub fn run(root: &Path, args: ReadArgs) -> Result<ExitCode> {
 
     let stdout = io::stdout();
     let mut handle = stdout.lock();
-    for m in &messages {
-        emit(&mut handle, m, args.pretty)?;
-    }
-    handle.flush()?;
-    if let Some(last) = messages.last() {
-        cursor = Some(last.id.to_string());
+    if args.from_now {
+        // Establish the cursor at the current tail without emitting anything,
+        // then drop into the polling loop.
+        if let Some(last) = messages.last() {
+            cursor = Some(last.id.to_string());
+        }
+    } else {
+        for m in &messages {
+            emit(&mut handle, m, args.pretty)?;
+        }
+        handle.flush()?;
+        if let Some(last) = messages.last() {
+            cursor = Some(last.id.to_string());
+        }
     }
 
     if !args.follow {

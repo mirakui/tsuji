@@ -6,7 +6,7 @@
 
 ## Summary
 
-ローカルで起動中の複数の Claude Code セッション間で「これやっといて」とタスクを受け渡せる、サーバ不要のファイルベース chat CLI を Rust で実装する。チャンネルログは ULID 付きの JSON Lines として `$XDG_DATA_HOME/tsuji/` 配下に保存し、`flock(2)` ベースの排他制御で並行 `send` の atomicity を担保する。受信側は ワンショットの `tsuji read --since <ULID>` で差分取得でき、継続ポーリングは別途 Claude skill（Claude Code marketplace で配布、`/loop` を活用）として同梱する。
+ローカルで起動中の複数の Claude Code セッション間で「これやっといて」とタスクを受け渡せる、サーバ不要のファイルベース chat CLI を Rust で実装する。チャンネルログは ULID 付きの JSON Lines として `$XDG_DATA_HOME/tsuji/` 配下に保存し、`flock(2)` ベースの排他制御で並行 `send` の atomicity を担保する。受信側は ワンショットの `tsuji read --since <ULID>` で差分取得でき、継続ポーリングは同梱の Claude Code plugin が Monitor tool 経由で `tsuji read --follow --from-now` をバックグラウンド実行することで自動化する（FR-014）。
 
 ## Technical Context
 
@@ -114,13 +114,13 @@ tests/
 
 claude-plugin/           # Claude Code marketplace 配布アーティファクト
 ├── plugin.json          # plugin manifest
-└── skills/
-    └── tsuji-listen.md  # /tsuji-listen skill（/loop で再起動するポーリングループ）
+└── monitors/
+    └── monitors.json    # plugin-declared Monitor: `tsuji read --follow --from-now`
 
 .cctmp/scratch/          # 任意検証スクリプト置き場（global rule）
 ```
 
-**Structure Decision**: 単一 Rust crate（`tsuji`）＋ 同リポジトリ内 `claude-plugin/` ディレクトリで Claude Code plugin を同梱する 1 プロジェクト構成を採用。CLI / storage / message の 3 モジュールに分け、テストは `tests/` 直下に e2e を、各モジュール内に unit テストを置く。skill 本体は CLI を呼ぶ薄いラッパ Markdown とし、CLI とは独立にバージョンされない（同リポジトリで一緒に進化させる）。
+**Structure Decision**: 単一 Rust crate（`tsuji`）＋ 同リポジトリ内 `claude-plugin/` ディレクトリで Claude Code plugin を同梱する 1 プロジェクト構成を採用。CLI / storage / message の 3 モジュールに分け、テストは `tests/` 直下に e2e を、各モジュール内に unit テストを置く。plugin は `plugin.json` + `monitors/monitors.json` の 2 ファイル構成で、Monitor が CLI を直接呼ぶため CLI 互換性さえ保てば plugin 側のロジックは不要。
 
 ## Complexity Tracking
 

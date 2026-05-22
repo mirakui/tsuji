@@ -53,41 +53,53 @@ Phase 0 では plan.md の Technical Context を確定させるための調査�
   - プロジェクト直下 `.tsuji/` を自動探索 → Clarification Q3 で global を選択済み。
   - 完全に環境変数のみ → CLI フラグでの一時オーバーライドができず CI/テストで不便。
 
-## 5. Claude Code plugin / skill marketplace 配布
+## 5. Claude Code plugin + Monitor tool
 
-- **Decision**: リポジトリ内 `claude-plugin/` に Claude Code plugin として `plugin.json`（plugin manifest）と `skills/tsuji-listen.md` を配置し、Anthropic 公式の skill marketplace（あるいは v1 時点で利用可能な等価な配布チャネル）に登録する。skill は `tsuji read --since <last_id>` をワンショット実行し、`/loop` （ダイナミックループ／`ScheduleWakeup`）で自分自身を再スケジュールする。
+- **Decision**: リポジトリ内 `claude-plugin/` を Claude Code plugin として整え、`experimental.monitors` 経由で `monitors/monitors.json` を読ませる。当該 manifest は `tsuji read --channel ${user_config.channel} --follow --from-now` を `when: "always"` で宣言し、プラグイン有効時に Monitor tool がバックグラウンドプロセスを起動して新着行を Claude セッションに surface する。チャンネル名は `userConfig.channel`（デフォルト `"default"`）で受け取る。
 - **Rationale**:
-  - Clarification Q2 で `/loop` ベースの方針が確定（Stop hook 不採用）。
-  - skill を marketplace 経由で配ると、受信側 Claude のセッションで `/plugin install tsuji` 一発で導入できる（実コマンド名は実装時に確認）。
-  - skill 本体は markdown + 短いプロンプトで済み、CLI とは独立にメンテナンスできる（CLI が後方互換を維持する限り、skill を更新せずに済む）。
+  - Clarification Q6 で Monitor tool への切替が確定。
+  - Monitor tool は stdout の各行を即座に Claude にイベント通知するため、`tsuji read --follow` の差分出力をそのまま渡せる。cursor ファイルや再スケジュール／skill 再起動忘れの懸念を消せる。
+  - Plugin が monitors を宣言できる（v2.1.105+）ため、ユーザは `/plugin install` するだけでよく、`/tsuji-listen` のような skill 呼び出しが不要になる。
+  - `tsuji read --follow` 単独だと起動時に全履歴を吐き出して Claude のコンテキストを汚す。CLI 側に `--from-now` を新設し、Monitor 起動時は末尾以降の新着のみ emit する（FR-019）。
 - **Alternatives considered**:
-  - skill を `~/.claude/skills/` に手動コピー → marketplace 経由の方が他環境への展開・再現性が高い。
-  - MCP server として実装 → 受信に常駐プロセスを要するため FR-009 の「常駐ゼロ」を破る。`/loop` の方が思想と合致する。
-  - Stop hook 連携 → Q2 で明確に不採用。
+  - `/loop` + `ScheduleWakeup` + listener skill（旧 v0.1 案） → カーソルファイル管理が必要、再スケジュール待ち時間中の遅延、skill 起動忘れリスクがあり、Monitor の方が運用が単純。
+  - skill を `~/.claude/skills/` に手動コピー → 配布性で Monitor + plugin に劣る。
+  - MCP server として実装 → 受信に常駐プロセスを要するため FR-009 の「CLI に常駐プロセス無し」を破る。Monitor は Claude Code 側のセッションプロセスが持つため、CLI コンテキストでは常駐ゼロを維持できる。
+  - Stop hook 連携 → 採用しない。
 
-### 5.1 `/loop` を使った skill の構造（暫定スケッチ）
+### 5.1 monitors/monitors.json と plugin.json の構造
 
-`tsuji-listen.md` の中身（実装時に確定する暫定案）:
-
-```markdown
----
-name: tsuji-listen
-description: Polls a tsuji channel and surfaces new messages to the current Claude session.
-arguments:
-  - name: channel
-    description: Channel name to listen on
-    required: true
----
-
-You are running the tsuji listener for channel "{channel}".
-
-1. Read the last-seen ULID from .tsuji-cursor (or use "" if absent).
-2. Run: `tsuji read --channel {channel} --since <cursor>` and parse the JSON Lines output.
-3. If new messages exist, surface their bodies to the user/agent context and update .tsuji-cursor to the latest id.
-4. Re-schedule yourself via /loop (ScheduleWakeup) with a 60–300 second delay.
+```json
+// claude-plugin/plugin.json
+{
+  "name": "tsuji",
+  "version": "0.2.0",
+  "userConfig": {
+    "channel": {
+      "type": "string",
+      "title": "Channel",
+      "description": "tsuji channel name to listen on.",
+      "default": "default"
+    }
+  },
+  "experimental": {
+    "monitors": "./monitors/monitors.json"
+  }
+}
 ```
 
-カーソル永続化先、ポーリング間隔の動的調整、停止条件などの詳細は Phase 2（tasks）以降の判断に委ねる。
+```json
+// claude-plugin/monitors/monitors.json
+[
+  {
+    "name": "tsuji-listen",
+    "command": "tsuji read --channel ${user_config.channel} --follow --from-now",
+    "description": "tsuji channel ${user_config.channel}"
+  }
+]
+```
+
+セッション開始時に Monitor がコマンドを起動し、`tsuji read --follow --from-now` が `tsuji send` で追加された行を 500ms 周期で検出して JSON Line として stdout に書く。Monitor はその stdout の各行を Claude にイベント通知する。停止条件は「セッション終了時」「ユーザが Monitor を明示的にキャンセル」のいずれか（Monitor tool docs 準拠）。
 
 ## 6. CLI フレームワーク選定（clap）
 
