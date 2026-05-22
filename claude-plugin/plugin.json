@@ -1,0 +1,11 @@
+{
+  "name": "tsuji",
+  "version": "0.1.0",
+  "description": "Inter-session chat for Claude Code. Pairs with the tsuji CLI to let one session hand work off to another via a local JSON Lines channel log.",
+  "author": "Issei Naruta",
+  "license": "MIT",
+  "homepage": "https://github.com/issei-m/tsuji",
+  "skills": [
+    "skills/tsuji-listen.md"
+  ]
+}

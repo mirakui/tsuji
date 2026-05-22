@@ -29,12 +29,12 @@ Single Rust crate at repository root: `src/`, `tests/`, `claude-plugin/` per pla
 
 **Purpose**: Cargo プロジェクト初期化と依存 / ツール設定。
 
-- [ ] T001 Initialize Rust binary crate with `cargo init --name tsuji --bin` at repository root; verify resulting `Cargo.toml` and `src/main.rs` placeholder
-- [ ] T002 Add runtime dependencies (`clap` with `derive` feature, `ulid` with `serde` feature, `serde`, `serde_json`, `chrono` with `serde` feature, `fs2`, `anyhow`) under `[dependencies]` in Cargo.toml
-- [ ] T003 [P] Add dev-dependencies (`assert_cmd`, `predicates`, `tempfile`) under `[dev-dependencies]` in Cargo.toml
-- [ ] T004 [P] Create rustfmt configuration (edition 2021, max_width 100) in rustfmt.toml at repository root
-- [ ] T005 [P] Configure clippy lints (`warnings = "deny"`, opt-in to pedantic where appropriate) in Cargo.toml `[lints.clippy]` section
-- [ ] T006 [P] Add `/target` and `.cctmp/` (except `.gitkeep`) entries to .gitignore at repository root
+- [X] T001 Initialize Rust binary crate with `cargo init --name tsuji --bin` at repository root; verify resulting `Cargo.toml` and `src/main.rs` placeholder
+- [X] T002 Add runtime dependencies (`clap` with `derive` feature, `ulid` with `serde` feature, `serde`, `serde_json`, `chrono` with `serde` feature, `fs2`, `anyhow`) under `[dependencies]` in Cargo.toml
+- [X] T003 [P] Add dev-dependencies (`assert_cmd`, `predicates`, `tempfile`) under `[dev-dependencies]` in Cargo.toml
+- [X] T004 [P] Create rustfmt configuration (edition 2021, max_width 100) in rustfmt.toml at repository root
+- [X] T005 [P] Configure clippy lints (`warnings = "deny"`, opt-in to pedantic where appropriate) in Cargo.toml `[lints.clippy]` section
+- [X] T006 [P] Add `/target` and `.cctmp/` (except `.gitkeep`) entries to .gitignore at repository root
 
 ---
 
@@ -44,12 +44,12 @@ Single Rust crate at repository root: `src/`, `tests/`, `claude-plugin/` per pla
 
 **⚠️ CRITICAL**: T007〜T012 が揃うまで Phase 3 以降の実装着手は不可。
 
-- [ ] T007 [P] Define `Message { id, ts, from, body }` struct with serde derives and JSON serialization tests in src/message/record.rs
-- [ ] T008 [P] Implement `Message::new(from, body) -> Message` generating ULID + RFC3339 UTC timestamp in src/message/id.rs
-- [ ] T009 [P] Implement `resolve_root(cli_root: Option<&Path>, env: &HashMap<…>) -> PathBuf` honoring `--root` > `TSUJI_ROOT` > `$XDG_DATA_HOME/tsuji` > `~/.local/share/tsuji` in src/storage/paths.rs
-- [ ] T010 [P] Implement `with_exclusive_lock<F, R>(file: &File, f: F) -> Result<R>` wrapper around fs2 flock in src/storage/lock.rs
-- [ ] T011 Wire clap CLI skeleton with `send` / `read` / `channels` subcommand stubs (all returning `unimplemented!`) in src/main.rs
-- [ ] T012 Define shared CLI error type and exit-code mapping (`0` ok, `1` runtime, `2` arg syntax) in src/error.rs and re-export from src/lib.rs
+- [X] T007 [P] Define `Message { id, ts, from, body }` struct with serde derives and JSON serialization tests in src/message/record.rs
+- [X] T008 [P] Implement `Message::new(from, body) -> Message` generating ULID + RFC3339 UTC timestamp in src/message/id.rs
+- [X] T009 [P] Implement `resolve_root(cli_root: Option<&Path>, env: &HashMap<…>) -> PathBuf` honoring `--root` > `TSUJI_ROOT` > `$XDG_DATA_HOME/tsuji` > `~/.local/share/tsuji` in src/storage/paths.rs
+- [X] T010 [P] Implement `with_exclusive_lock<F, R>(file: &File, f: F) -> Result<R>` wrapper around fs2 flock in src/storage/lock.rs
+- [X] T011 Wire clap CLI skeleton with `send` / `read` / `channels` subcommand stubs (all returning `unimplemented!`) in src/main.rs
+- [X] T012 Define shared CLI error type and exit-code mapping (`0` ok, `1` runtime, `2` arg syntax) in src/error.rs and re-export from src/lib.rs
 
 **Checkpoint**: Foundation 完了 — US1〜US4 の並行着手が可能（テストファイルが独立しているため）。
 
@@ -65,17 +65,17 @@ Single Rust crate at repository root: `src/`, `tests/`, `claude-plugin/` per pla
 
 > Write these tests FIRST and ensure they FAIL before implementation.
 
-- [ ] T013 [P] [US1] Author e2e test that runs `tsuji send --channel default --as agent-a --body "hello"` then `tsuji read --channel default` and asserts a JSON line containing `from:"agent-a"` and `body:"hello"` in tests/send_read_e2e.rs
-- [ ] T014 [P] [US1] Author contract test loading contracts/jsonl-schema.json (via `serde_json` + a JSON Schema validator like `jsonschema` dev-dep) and asserting every line from `tsuji read` matches the schema in tests/jsonl_schema_test.rs
-- [ ] T015 [P] [US1] Author test asserting two consecutive sends produce strictly increasing ULIDs (lexicographic) in tests/send_read_e2e.rs (separate `#[test]` fn)
+- [X] T013 [P] [US1] Author e2e test that runs `tsuji send --channel default --as agent-a --body "hello"` then `tsuji read --channel default` and asserts a JSON line containing `from:"agent-a"` and `body:"hello"` in tests/send_read_e2e.rs
+- [X] T014 [P] [US1] Author contract test loading contracts/jsonl-schema.json (via `serde_json` + a JSON Schema validator like `jsonschema` dev-dep) and asserting every line from `tsuji read` matches the schema in tests/jsonl_schema_test.rs
+- [X] T015 [P] [US1] Author test asserting two consecutive sends produce strictly increasing ULIDs (lexicographic) in tests/send_read_e2e.rs (separate `#[test]` fn)
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Implement `append_message(root, channel, msg)` using `OpenOptions::append + create` and `flock` (FR-007) in src/storage/writer.rs
-- [ ] T017 [US1] Implement `read_messages(root, channel) -> impl Iterator<Item=Result<String>>` streaming valid JSON lines and warning-skipping malformed lines (Edge Case "不正な JSON 行") in src/storage/reader.rs
-- [ ] T018 [US1] Implement `tsuji send` handler (validate channel name / sender / body, call append_message, exit 0 with empty stdout) in src/cli/send.rs
-- [ ] T019 [US1] Implement `tsuji read` handler (default JSON Lines pass-through to stdout) in src/cli/read.rs
-- [ ] T020 [US1] Wire send/read into clap dispatch in src/main.rs and rerun T013–T015 until all GREEN
+- [X] T016 [US1] Implement `append_message(root, channel, msg)` using `OpenOptions::append + create` and `flock` (FR-007) in src/storage/writer.rs
+- [X] T017 [US1] Implement `read_messages(root, channel) -> impl Iterator<Item=Result<String>>` streaming valid JSON lines and warning-skipping malformed lines (Edge Case "不正な JSON 行") in src/storage/reader.rs
+- [X] T018 [US1] Implement `tsuji send` handler (validate channel name / sender / body, call append_message, exit 0 with empty stdout) in src/cli/send.rs
+- [X] T019 [US1] Implement `tsuji read` handler (default JSON Lines pass-through to stdout) in src/cli/read.rs
+- [X] T020 [US1] Wire send/read into clap dispatch in src/main.rs and rerun T013–T015 until all GREEN
 
 **Checkpoint**: US1 単独で SC-001 を満たし、MVP として配布可能。
 
@@ -89,15 +89,15 @@ Single Rust crate at repository root: `src/`, `tests/`, `claude-plugin/` per pla
 
 ### Tests for User Story 2 ⚠️ FIRST
 
-- [ ] T021 [P] [US2] Author e2e test asserting `tsuji send --channel newtopic ...` succeeds when `newtopic.jsonl` does not yet exist (auto-create) in tests/channels_e2e.rs
-- [ ] T022 [P] [US2] Author e2e test asserting `tsuji channels` lists existing channel names alphabetically (one per line) in tests/channels_e2e.rs
-- [ ] T023 [P] [US2] Author e2e test sending into channels `a` and `b` and asserting `tsuji read --channel a` returns only `a`'s messages in tests/channels_e2e.rs
+- [X] T021 [P] [US2] Author e2e test asserting `tsuji send --channel newtopic ...` succeeds when `newtopic.jsonl` does not yet exist (auto-create) in tests/channels_e2e.rs
+- [X] T022 [P] [US2] Author e2e test asserting `tsuji channels` lists existing channel names alphabetically (one per line) in tests/channels_e2e.rs
+- [X] T023 [P] [US2] Author e2e test sending into channels `a` and `b` and asserting `tsuji read --channel a` returns only `a`'s messages in tests/channels_e2e.rs
 
 ### Implementation for User Story 2
 
-- [ ] T024 [US2] Extend `append_message` to `fs::create_dir_all(root)` and to create the channel file when missing (FR-006 / FR-016) in src/storage/writer.rs
-- [ ] T025 [US2] Implement `list_channels(root) -> Vec<String>` scanning `*.jsonl` under root and sorting in src/storage/reader.rs (or new src/storage/list.rs)
-- [ ] T026 [US2] Implement `tsuji channels` handler in src/cli/channels.rs and wire into clap dispatch in src/main.rs; rerun T021–T023 until GREEN
+- [X] T024 [US2] Extend `append_message` to `fs::create_dir_all(root)` and to create the channel file when missing (FR-006 / FR-016) in src/storage/writer.rs
+- [X] T025 [US2] Implement `list_channels(root) -> Vec<String>` scanning `*.jsonl` under root and sorting in src/storage/reader.rs (or new src/storage/list.rs)
+- [X] T026 [US2] Implement `tsuji channels` handler in src/cli/channels.rs and wire into clap dispatch in src/main.rs; rerun T021–T023 until GREEN
 
 **Checkpoint**: US1 + US2 が共存。チャンネル混線なしで複数ストリームを運用できる。
 
@@ -111,14 +111,14 @@ Single Rust crate at repository root: `src/`, `tests/`, `claude-plugin/` per pla
 
 ### Tests for User Story 3 ⚠️ FIRST
 
-- [ ] T027 [P] [US3] Author e2e test seeding 5 messages, capturing the 3rd ULID, then asserting `tsuji read --since <3rd>` returns exactly the 4th and 5th in tests/since_cursor.rs
-- [ ] T028 [P] [US3] Author e2e test passing a syntactically valid but non-existent ULID greater than all stored ones, asserting empty output + exit 0 in tests/since_cursor.rs
-- [ ] T029 [P] [US3] Author e2e test passing a malformed `--since` (e.g. `"not-a-ulid"`) and asserting exit code 1 with a stderr message in tests/since_cursor.rs
+- [X] T027 [P] [US3] Author e2e test seeding 5 messages, capturing the 3rd ULID, then asserting `tsuji read --since <3rd>` returns exactly the 4th and 5th in tests/since_cursor.rs
+- [X] T028 [P] [US3] Author e2e test passing a syntactically valid but non-existent ULID greater than all stored ones, asserting empty output + exit 0 in tests/since_cursor.rs
+- [X] T029 [P] [US3] Author e2e test passing a malformed `--since` (e.g. `"not-a-ulid"`) and asserting exit code 1 with a stderr message in tests/since_cursor.rs
 
 ### Implementation for User Story 3
 
-- [ ] T030 [US3] Add `--since <ULID>` argument (with format validation regex `^[0-9A-HJKMNP-TV-Z]{26}$`) to `tsuji read` in src/cli/read.rs
-- [ ] T031 [US3] Implement `id > since` lexicographic filter inside `read_messages` (or a wrapping iterator) in src/storage/reader.rs and rerun T027–T029 until GREEN
+- [X] T030 [US3] Add `--since <ULID>` argument (with format validation regex `^[0-9A-HJKMNP-TV-Z]{26}$`) to `tsuji read` in src/cli/read.rs
+- [X] T031 [US3] Implement `id > since` lexicographic filter inside `read_messages` (or a wrapping iterator) in src/storage/reader.rs and rerun T027–T029 until GREEN
 
 **Checkpoint**: SC-004（カーソル意味論の完全性）が自動テストで担保された状態。
 
@@ -132,14 +132,14 @@ Single Rust crate at repository root: `src/`, `tests/`, `claude-plugin/` per pla
 
 ### Tests for User Story 4 ⚠️ FIRST
 
-- [ ] T032 [P] [US4] Author e2e test asserting `--pretty` outputs lines matching `^\[<rfc3339>\] <from>: <first-body-line>$` (plus continuation lines for multi-line body) in tests/pretty_and_follow.rs
-- [ ] T033 [P] [US4] Author e2e test that spawns `tsuji read --follow` as a child process, sleeps 500ms, sends a message from another invocation, then asserts the child's stdout contains the new message within 2 seconds in tests/pretty_and_follow.rs
+- [X] T032 [P] [US4] Author e2e test asserting `--pretty` outputs lines matching `^\[<rfc3339>\] <from>: <first-body-line>$` (plus continuation lines for multi-line body) in tests/pretty_and_follow.rs
+- [X] T033 [P] [US4] Author e2e test that spawns `tsuji read --follow` as a child process, sleeps 500ms, sends a message from another invocation, then asserts the child's stdout contains the new message within 2 seconds in tests/pretty_and_follow.rs
 
 ### Implementation for User Story 4
 
-- [ ] T034 [US4] Implement `pretty_format(msg: &Message) -> String` honoring multi-line bodies (continuation lines indented) in src/pretty.rs
-- [ ] T035 [US4] Add `--follow` and `--pretty` flags to `tsuji read` in src/cli/read.rs (clap definitions only)
-- [ ] T036 [US4] Implement `--follow` polling loop (poll interval ≤ 2 s; SIGINT-safe shutdown via `ctrlc` crate or signal-hook; if a new dep is needed add it in Cargo.toml first) in src/cli/read.rs and rerun T032–T033 until GREEN
+- [X] T034 [US4] Implement `pretty_format(msg: &Message) -> String` honoring multi-line bodies (continuation lines indented) in src/pretty.rs
+- [X] T035 [US4] Add `--follow` and `--pretty` flags to `tsuji read` in src/cli/read.rs (clap definitions only)
+- [X] T036 [US4] Implement `--follow` polling loop (poll interval ≤ 2 s; SIGINT-safe shutdown via `ctrlc` crate or signal-hook; if a new dep is needed add it in Cargo.toml first) in src/cli/read.rs and rerun T032–T033 until GREEN
 
 **Checkpoint**: 全 4 ユーザストーリーが独立にテスト可能な状態。
 
@@ -151,8 +151,8 @@ Single Rust crate at repository root: `src/`, `tests/`, `claude-plugin/` per pla
 
 **Independent Test**: ビルド済み `tsuji` を PATH に通した状態で、Claude Code セッションが `claude-plugin/` を読み込んで `/tsuji-listen default` を発火、`/loop` 経由で再起動が観測できること。
 
-- [ ] T037 [P] Author Claude Code plugin manifest with required fields (name, version, description, entry skill) in claude-plugin/plugin.json
-- [ ] T038 [P] Author `/tsuji-listen` skill markdown (reads cursor file, calls `tsuji read --since`, surfaces new bodies, schedules wake-up via `/loop` with 60–300s delay) in claude-plugin/skills/tsuji-listen.md
+- [X] T037 [P] Author Claude Code plugin manifest with required fields (name, version, description, entry skill) in claude-plugin/plugin.json
+- [X] T038 [P] Author `/tsuji-listen` skill markdown (reads cursor file, calls `tsuji read --since`, surfaces new bodies, schedules wake-up via `/loop` with 60–300s delay) in claude-plugin/skills/tsuji-listen.md
 - [ ] T039 Smoke-test the skill by installing the plugin into a local Claude Code session, listening on a `smoke` channel, sending a message from another shell, and confirming `/loop` surfaces it; record observations in .cctmp/scratch/skill-smoke.md
 
 ---
@@ -161,8 +161,8 @@ Single Rust crate at repository root: `src/`, `tests/`, `claude-plugin/` per pla
 
 **Goal**: 並行 `send` 100 回連続でログ破損ゼロを自動テストで担保する。
 
-- [ ] T040 Author concurrency test spawning 2 OS threads, each invoking `tsuji send` 50 times against the same channel under a `tempfile::tempdir()` root, then asserting (a) line count = 100, (b) every line parses, (c) ULIDs are unique in tests/concurrent_send.rs
-- [ ] T041 If T040 fails, harden `append_message` (e.g. acquire `lock_exclusive` before write, ensure `write_all` happens as single syscall via pre-formatted buffer, fsync if necessary) in src/storage/writer.rs and rerun T040 until GREEN
+- [X] T040 Author concurrency test spawning 2 OS threads, each invoking `tsuji send` 50 times against the same channel under a `tempfile::tempdir()` root, then asserting (a) line count = 100, (b) every line parses, (c) ULIDs are unique in tests/concurrent_send.rs
+- [X] T041 If T040 fails, harden `append_message` (e.g. acquire `lock_exclusive` before write, ensure `write_all` happens as single syscall via pre-formatted buffer, fsync if necessary) in src/storage/writer.rs and rerun T040 until GREEN
 
 ---
 
@@ -170,13 +170,13 @@ Single Rust crate at repository root: `src/`, `tests/`, `claude-plugin/` per pla
 
 **Purpose**: ドキュメント、品質ゲート、quickstart 手動検証。
 
-- [ ] T042 [P] Write README.md with one-paragraph overview, install command (`cargo install --path .`), and a link to specs/001-tsuji-chat-cli/quickstart.md at repository root
-- [ ] T043 [P] Add rustdoc comments to all `pub` items in src/lib.rs, src/message/**.rs, src/storage/**.rs
-- [ ] T044 Run `cargo fmt --check` from repository root and fix any formatting drift
-- [ ] T045 Run `cargo clippy --all-targets -- -D warnings` from repository root and fix all warnings
-- [ ] T046 Run `cargo test` from repository root and verify the entire suite passes (unit + integration + concurrency)
-- [ ] T047 Run `cargo build --release` from repository root and confirm the artifact at target/release/tsuji starts and responds to `--help`
-- [ ] T048 Walk through specs/001-tsuji-chat-cli/quickstart.md sections 2–6 manually against the release binary and record outcomes in .cctmp/scratch/quickstart-walkthrough.md
+- [X] T042 [P] Write README.md with one-paragraph overview, install command (`cargo install --path .`), and a link to specs/001-tsuji-chat-cli/quickstart.md at repository root
+- [X] T043 [P] Add rustdoc comments to all `pub` items in src/lib.rs, src/message/**.rs, src/storage/**.rs
+- [X] T044 Run `cargo fmt --check` from repository root and fix any formatting drift
+- [X] T045 Run `cargo clippy --all-targets -- -D warnings` from repository root and fix all warnings
+- [X] T046 Run `cargo test` from repository root and verify the entire suite passes (unit + integration + concurrency)
+- [X] T047 Run `cargo build --release` from repository root and confirm the artifact at target/release/tsuji starts and responds to `--help`
+- [X] T048 Walk through specs/001-tsuji-chat-cli/quickstart.md sections 2–6 manually against the release binary and record outcomes in .cctmp/scratch/quickstart-walkthrough.md
 
 ---
 
