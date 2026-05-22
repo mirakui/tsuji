@@ -1,46 +1,55 @@
-# tsuji（辻）
+# tsuji (辻)
 
 Local file-based inter-session chat CLI for Claude Code.
 
-ローカルで起動中の複数の Claude Code セッション同士を、サーバ無し・ファイルベースで会話させる小道具。1 セッションが別セッションに「これやっといて」とタスクを渡すのに使う。
+A small tool that lets multiple Claude Code sessions on the same machine talk
+to each other through a shared file — no server, no auth. One session hands
+work off to another by saying "can you take this?".
 
-## 仕組み（要約）
+## How it works
 
-- ストレージは JSON Lines ファイル。1 ファイル＝1 チャンネル。
-- メッセージ ID は ULID（辞書順＝時系列順）。
-- 並行 send は `flock(2)` ＋ `O_APPEND` で破損ゼロ。
-- 受信は `tsuji read --since <ULID>` の差分取得。常駐デーモンなし。
-- 受信側 Claude のセッション開始時に `tsuji read --follow --from-now` をバックグラウンド起動する Claude Code plugin（`claude-plugin/` の `monitors/monitors.json`）を同梱。新着行は Monitor tool が surface するため、`/loop` や skill 起動忘れの心配がない。チャンネル名は plugin の `user_config.channel` で設定する。
+- Storage is a JSON Lines file per channel (1 file = 1 channel).
+- Each message carries a 26-character ULID (lex order = time order).
+- Concurrent sends are serialized with `flock(2)` + `O_APPEND`, so no line
+  ever interleaves with another.
+- Receivers fetch incrementally with `tsuji read --since <ULID>`. There is no
+  long-running daemon in the CLI.
+- A bundled Claude Code plugin (`claude-plugin/`, declared in
+  `monitors/monitors.json`) starts `tsuji read --follow --from-now` in the
+  background whenever a Claude Code session is active. New lines are
+  delivered into the session by the Monitor tool, so there is no `/loop`
+  rescheduling and no "did I forget to start the skill?" failure mode. The
+  channel name is configured per install via `user_config.channel`.
 
-## インストール
+## Install
 
 ```sh
 cargo install --path .
 ```
 
-## クイックスタート
+## Quickstart
 
-詳細は [specs/001-tsuji-chat-cli/quickstart.md](specs/001-tsuji-chat-cli/quickstart.md)。
+See [specs/001-tsuji-chat-cli/quickstart.md](specs/001-tsuji-chat-cli/quickstart.md) for details.
 
 ```sh
-# ターミナル A
-tsuji send --channel default --as agent-a --body "依存関係を更新しておいて"
+# Terminal A
+tsuji send --channel default --as agent-a --body "please bump the dependencies"
 
-# ターミナル B
-tsuji read --channel default                   # JSON Lines
-tsuji read --channel default --pretty          # 人間可読
-tsuji read --channel default --follow --pretty # tail -f 風
+# Terminal B
+tsuji read --channel default                   # JSON Lines (default)
+tsuji read --channel default --pretty          # human-readable
+tsuji read --channel default --follow --pretty # tail -f-style
 
-tsuji channels                                  # 既存チャンネル一覧
+tsuji channels                                  # list existing channels
 ```
 
-## 設定
+## Configuration
 
-| 項目 | 既定値 | 上書き |
+| Item | Default | Override |
 |---|---|---|
-| ログ保存ルート | `$XDG_DATA_HOME/tsuji/`（無ければ `~/.local/share/tsuji/`） | `--root <PATH>` または `TSUJI_ROOT` |
+| Channel log root | `$XDG_DATA_HOME/tsuji/` (falls back to `~/.local/share/tsuji/`) | `--root <PATH>` or `TSUJI_ROOT` |
 
-## 開発
+## Development
 
 ```sh
 cargo fmt --check
