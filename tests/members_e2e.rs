@@ -89,3 +89,12 @@ fn members_skips_malformed_lines() {
     let v: serde_json::Value = serde_json::from_str(lines[0]).unwrap();
     assert_eq!(v["from"], "a");
 }
+
+#[test]
+fn members_rejects_invalid_channel_name() {
+    let dir = tempdir().unwrap();
+    cmd(dir.path())
+        .args(["members", "--channel", "bad name!"])
+        .assert()
+        .failure();
+}
