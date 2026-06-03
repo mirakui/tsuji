@@ -5,6 +5,30 @@ fn plugin_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("claude-plugin")
 }
 
+/// Returns the YAML frontmatter block (the text between the first two `---`).
+fn frontmatter(path: &Path) -> String {
+    let raw = fs::read_to_string(path).unwrap();
+    let mut parts = raw.splitn(3, "---");
+    let _before = parts.next();
+    parts
+        .next()
+        .unwrap_or_else(|| panic!("{} is missing a frontmatter block", path.display()))
+        .to_string()
+}
+
+#[test]
+fn command_files_exist_with_description() {
+    for name in ["start", "join", "status"] {
+        let path = plugin_dir().join("commands").join(format!("{name}.md"));
+        assert!(path.exists(), "{} should exist", path.display());
+        let fm = frontmatter(&path);
+        assert!(
+            fm.contains("description:"),
+            "{name}.md frontmatter needs description:"
+        );
+    }
+}
+
 #[test]
 fn plugin_json_is_valid_and_has_no_static_monitor() {
     let raw = fs::read_to_string(plugin_dir().join("plugin.json")).unwrap();
