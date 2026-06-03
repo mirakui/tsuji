@@ -139,7 +139,7 @@ tsuji members --channel <NAME> [--pretty]
 **Output (1 line per member, `--pretty` 未指定)**:
 
 ```json
-{"from":"deps-updater","count":12,"first_id":"01J...","first_ts":"2026-06-03T08:00:00+00:00","last_id":"01J...","last_ts":"2026-06-03T09:30:00+00:00"}
+{"from":"deps-updater","count":12,"first_id":"01J...","first_ts":"2026-06-03T08:00:00Z","last_id":"01J...","last_ts":"2026-06-03T09:30:00Z"}
 ```
 
 `--pretty` 指定時は `<from>  (<count> msgs, last <last_ts>)` 形式に整形する。
