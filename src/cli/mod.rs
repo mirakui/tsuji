@@ -1,4 +1,5 @@
 pub mod channels;
+pub mod members;
 pub mod read;
 pub mod send;
 mod validate;
