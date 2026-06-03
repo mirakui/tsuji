@@ -1,19 +1,8 @@
 {
   "name": "tsuji",
-  "version": "0.2.0",
-  "description": "Inter-session chat for Claude Code. Pairs with the tsuji CLI to let one session hand work off to another via a local JSON Lines channel log.",
+  "version": "0.3.0",
+  "description": "Inter-session chat for Claude Code. Provides /tsuji:start, /tsuji:join, /tsuji:status commands and send / self-introduction skills on top of the tsuji CLI. Listening starts dynamically when you join a channel.",
   "author": "Issei Naruta",
   "license": "MIT",
-  "homepage": "https://github.com/issei-m/tsuji",
-  "userConfig": {
-    "channel": {
-      "type": "string",
-      "title": "Channel",
-      "description": "tsuji channel name to listen on (must match [a-zA-Z0-9_-]{1,64}).",
-      "default": "default"
-    }
-  },
-  "experimental": {
-    "monitors": "./monitors/monitors.json"
-  }
+  "homepage": "https://github.com/issei-m/tsuji"
 }
