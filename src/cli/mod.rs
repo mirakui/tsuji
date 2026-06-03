@@ -34,6 +34,8 @@ pub enum Commands {
     Read(read::ReadArgs),
     /// List existing channels.
     Channels,
+    /// Summarize a channel's members (distinct senders).
+    Members(members::MembersArgs),
 }
 
 pub fn dispatch(cli: Cli) -> Result<ExitCode> {
@@ -42,6 +44,7 @@ pub fn dispatch(cli: Cli) -> Result<ExitCode> {
         Commands::Send(args) => send::run(&root, args),
         Commands::Read(args) => read::run(&root, args),
         Commands::Channels => channels::run(&root),
+        Commands::Members(args) => members::run(&root, args),
     }
 }
 

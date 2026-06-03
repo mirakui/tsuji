@@ -1,10 +1,16 @@
 use std::collections::HashMap;
+use std::io::{self, Write};
+use std::path::Path;
 
+use anyhow::Result;
 use chrono::{DateTime, Utc};
+use clap::Args;
 use serde::Serialize;
 use ulid::Ulid;
 
+use crate::error::ExitCode;
 use crate::message::Message;
+use crate::storage::reader::read_messages;
 
 /// One distinct sender in a channel, with activity bounds. Serialized as one
 /// JSON object per line by `tsuji members`.
@@ -16,6 +22,51 @@ pub struct MemberSummary {
     pub first_ts: DateTime<Utc>,
     pub last_id: Ulid,
     pub last_ts: DateTime<Utc>,
+}
+
+#[derive(Debug, Args)]
+pub struct MembersArgs {
+    /// Channel to summarize.
+    #[arg(long)]
+    pub channel: String,
+
+    /// Output in human-readable format instead of JSON Lines.
+    #[arg(long)]
+    pub pretty: bool,
+}
+
+pub fn run(root: &Path, args: MembersArgs) -> Result<ExitCode> {
+    crate::cli::validate_channel_name(&args.channel)?;
+    let messages = read_messages(root, &args.channel)?;
+    let members = aggregate(&messages);
+
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+    for member in &members {
+        emit(&mut handle, member, args.pretty)?;
+    }
+    handle.flush()?;
+    Ok(ExitCode::Ok)
+}
+
+fn emit<W: Write>(w: &mut W, m: &MemberSummary, pretty: bool) -> io::Result<()> {
+    if pretty {
+        writeln!(w, "{}", pretty_member(m))
+    } else {
+        let line = serde_json::to_string(m).expect("MemberSummary serialization must not fail");
+        writeln!(w, "{line}")
+    }
+}
+
+fn pretty_member(m: &MemberSummary) -> String {
+    let noun = if m.count == 1 { "msg" } else { "msgs" };
+    format!(
+        "{}  ({} {}, last {})",
+        m.from,
+        m.count,
+        noun,
+        m.last_ts.to_rfc3339()
+    )
 }
 
 /// Aggregates messages into per-sender summaries, sorted most-recently-active
