@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use ulid::Ulid;
@@ -19,7 +21,6 @@ pub struct MemberSummary {
 /// Aggregates messages into per-sender summaries, sorted most-recently-active
 /// first (descending `last_id`; ULID order equals time order).
 pub fn aggregate(messages: &[Message]) -> Vec<MemberSummary> {
-    use std::collections::HashMap;
     let mut map: HashMap<String, MemberSummary> = HashMap::new();
     for m in messages {
         map.entry(m.from.clone())
@@ -75,6 +76,8 @@ mod tests {
         assert_eq!(a.count, 2);
         assert_eq!(a.first_id.to_string(), "01ARZ3NDEKTSV4RRFFQ69G5F01");
         assert_eq!(a.last_id.to_string(), "01ARZ3NDEKTSV4RRFFQ69G5F03");
+        let b = got.iter().find(|m| m.from == "b").unwrap();
+        assert_eq!(b.count, 1);
     }
 
     #[test]
@@ -91,5 +94,29 @@ mod tests {
     #[test]
     fn aggregate_empty_returns_empty() {
         assert!(aggregate(&[]).is_empty());
+    }
+
+    fn msg_at(id: &str, from: &str, hour: u32) -> Message {
+        Message {
+            id: Ulid::from_string(id).unwrap(),
+            ts: chrono::Utc
+                .with_ymd_and_hms(2026, 1, 1, hour, 0, 0)
+                .unwrap(),
+            from: from.into(),
+            body: "x".into(),
+        }
+    }
+
+    #[test]
+    fn aggregate_tracks_first_and_last_ts() {
+        use chrono::Timelike;
+        let msgs = vec![
+            msg_at("01ARZ3NDEKTSV4RRFFQ69G5F01", "a", 1),
+            msg_at("01ARZ3NDEKTSV4RRFFQ69G5F03", "a", 3),
+        ];
+        let got = aggregate(&msgs);
+        let a = &got[0];
+        assert_eq!(a.first_ts.hour(), 1);
+        assert_eq!(a.last_ts.hour(), 3);
     }
 }
