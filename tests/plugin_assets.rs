@@ -52,3 +52,20 @@ fn static_monitor_manifest_is_removed() {
         "monitors/monitors.json should be deleted"
     );
 }
+
+#[test]
+fn skill_files_exist_with_name_and_description() {
+    for name in ["send", "self-introduction"] {
+        let path = plugin_dir().join("skills").join(name).join("SKILL.md");
+        assert!(path.exists(), "{} should exist", path.display());
+        let fm = frontmatter(&path);
+        assert!(
+            fm.contains("name:"),
+            "{name} SKILL.md frontmatter needs name:"
+        );
+        assert!(
+            fm.contains("description:"),
+            "{name} SKILL.md frontmatter needs description:"
+        );
+    }
+}
