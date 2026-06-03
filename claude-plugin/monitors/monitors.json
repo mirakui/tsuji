@@ -1,0 +1,7 @@
+[
+  {
+    "name": "tsuji-listen",
+    "command": "tsuji read --channel ${user_config.channel} --follow --from-now",
+    "description": "tsuji channel ${user_config.channel}"
+  }
+]

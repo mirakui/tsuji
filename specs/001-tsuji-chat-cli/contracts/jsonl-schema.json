@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/issei-m/tsuji/specs/001-tsuji-chat-cli/contracts/jsonl-schema.json",
+  "title": "tsuji channel log record",
+  "description": "1 message = 1 line in a tsuji channel JSON Lines file. v1 schema.",
+  "type": "object",
+  "required": ["id", "ts", "from", "body"],
+  "additionalProperties": true,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "ULID. Crockford Base32, 26 chars. Lex-order equals time-order.",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "ts": {
+      "type": "string",
+      "description": "RFC3339 / ISO 8601 timestamp at send time. UTC recommended.",
+      "format": "date-time"
+    },
+    "from": {
+      "type": "string",
+      "description": "Sender label. Non-empty, no newline, up to 64 chars.",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "body": {
+      "type": "string",
+      "description": "Plain text body. May contain newlines. Non-empty.",
+      "minLength": 1
+    }
+  }
+}
