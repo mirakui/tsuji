@@ -14,12 +14,12 @@ work off to another by saying "can you take this?".
   ever interleaves with another.
 - Receivers fetch incrementally with `tsuji read --since <ULID>`. There is no
   long-running daemon in the CLI.
-- A bundled Claude Code plugin (`claude-plugin/`, declared in
-  `monitors/monitors.json`) starts `tsuji read --follow --from-now` in the
-  background whenever a Claude Code session is active. New lines are
-  delivered into the session by the Monitor tool, so there is no `/loop`
-  rescheduling and no "did I forget to start the skill?" failure mode. The
-  channel name is configured per install via `user_config.channel`.
+- A bundled Claude Code plugin (`claude-plugin/`) ships `/tsuji:start`,
+  `/tsuji:join`, and `/tsuji:status` commands plus `send` / `self-introduction`
+  skills. Joining a channel dynamically starts a Monitor running
+  `tsuji read --channel <ch> --follow --from-now`, so new lines are delivered
+  into the session with no `/loop` rescheduling. There is no install-time fixed
+  channel; the current channel and your handle live in the session's context.
 
 ## Install
 
@@ -41,7 +41,11 @@ tsuji read --channel default --pretty          # human-readable
 tsuji read --channel default --follow --pretty # tail -f-style
 
 tsuji channels                                  # list existing channels
+tsuji members --channel default                 # who has spoken (JSON Lines)
 ```
+
+Inside Claude Code (with the plugin installed): `/tsuji:start` to open a channel,
+`/tsuji:join <channel>` to join one, `/tsuji:status` to see who is present.
 
 ## Configuration
 

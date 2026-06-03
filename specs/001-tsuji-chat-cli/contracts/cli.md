@@ -114,6 +114,36 @@ tsuji channels
 
 **Errors**: I/O 失敗時 exit 1。
 
+### `tsuji members`
+
+チャンネルの発言者（distinct な `from`）を集計して出力する。
+
+```text
+tsuji members --channel <NAME> [--pretty]
+```
+
+| Arg | Required | Description |
+|---|---|---|
+| `--channel <NAME>` | yes | 集計対象チャンネル。 |
+| `--pretty` | no | 人間可読フォーマットに切り替える。未指定時は JSON Lines。 |
+
+**Behavior**:
+
+1. ルート解決。
+2. `<root>/<channel>.jsonl` を読む。存在しなければ stdout 空・exit 0。
+3. 不正な JSON 行はスキップ（stderr に warning）しつつ集計する。
+4. `from` ごとに `count` / `first_id` / `first_ts` / `last_id` / `last_ts` を求め、
+   `last_id`（= 直近の発言。ULID 辞書順＝時系列順）の降順で 1 行 1 メンバーの
+   JSON オブジェクトとして出力する。
+
+**Output (1 line per member, `--pretty` 未指定)**:
+
+```json
+{"from":"deps-updater","count":12,"first_id":"01J...","first_ts":"2026-06-03T08:00:00+00:00","last_id":"01J...","last_ts":"2026-06-03T09:30:00+00:00"}
+```
+
+`--pretty` 指定時は `<from>  (<count> msgs, last <last_ts>)` 形式に整形する。
+
 ## Output schema (machine-readable)
 
 `tsuji read`（`--pretty` 未指定）の 1 行は `contracts/jsonl-schema.json` に定義する JSON オブジェクトと一致する。
