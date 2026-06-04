@@ -85,26 +85,33 @@ wc -l ~/.local/share/tsuji/stress.jsonl   # → 100
 jq -c '.' ~/.local/share/tsuji/stress.jsonl > /dev/null  # 0 件の parse error
 ```
 
-## 6. Claude plugin の Monitor による listener（FR-014）
+## 6. Claude plugin の commands / skills（FR-014）
 
 ```text
 # 受信側の Claude Code セッション内で:
 /plugin install <path-or-marketplace-id>   # claude-plugin/ ディレクトリを plugin として登録
-# 初回 install で user_config.channel を求められるので、listen するチャンネル名を入力
-# （未入力なら default = "default"）
 
-# plugin が有効な状態でセッションを開始すると、Monitor tool が
-#   tsuji read --channel <user_config.channel> --follow --from-now
-# をバックグラウンドで起動する。/tasks や /plugin 画面で生きていることを確認できる。
+# チャンネルを新規に開いて join（チャンネル名が出力される）:
+/tsuji:start
+# もしくは既存チャンネルに join:
+/tsuji:join default
 
-# 別シェルから送信
+# join すると Claude は役割ベースのハンドルを決め、Monitor tool で
+#   tsuji read --channel <ch> --follow --from-now
+# をバックグラウンド起動し、自己紹介（名前・目的・repo/branch/worktree）を送信する。
+# 以降の新着行は Monitor が受信側 Claude のセッションに surface する。
+# 過去ログ（--from-now）は流れないのでコンテキストが汚れない。
+
+# 現在のチャンネルの参加者を見る:
+/tsuji:status
+
+# 別シェル（または別セッション）から送信
 tsuji send --channel default --as outsider --body 'are you awake?'
-
-# Monitor が新着 JSON Lines を受信側 Claude のセッションに surface し、
-# Claude が応答できる。過去ログ（--from-now）は流れないのでコンテキストが汚れない。
 ```
 
-CLI 単体の挙動は `tsuji read --channel <ch> --follow --from-now` を任意のターミナルで起動して再現できる。
+固定チャンネルの自動 listen（旧 manifest Monitor）は廃止。listen は join/start 実行時に
+動的起動される。CLI 単体の挙動は `tsuji read --channel <ch> --follow --from-now` や
+`tsuji members --channel <ch>` を任意のターミナルで起動して再現できる。
 
 ## 7. ロールバック
 

@@ -90,7 +90,7 @@
 - **不正な JSON 行**: 何らかの理由でログファイルに不正な行が混入した場合、`tsuji read` は壊れた行をスキップしつつ正常な行は出力する（クラッシュしない）。
 - **メッセージ ID の重複**: 同時送信時に同一 ID が生成される事故が起きないこと。ID 形式は ULID（26 文字、時刻＋ランダム）を採用し、辞書順＝時系列順となる性質を `--since` のカーソル比較に利用する。
 - **巨大ログ**: チャンネルログが何 MB／何万行と肥大化した場合の `tsuji read --since` の応答時間が許容範囲に留まる（ローテーション・圧縮の方針は v1 範囲外、未決事項として記録）。
-- **受信側の取りこぼし**: ポーリング型のため、受信側 Claude が `tsuji read` を叩くのを忘れるとメッセージが永遠に届かない。これに対する補助として、v1 では Claude Code plugin として `tsuji read --follow --from-now` を Monitor tool 経由で自動起動する（FR-014）。Monitor は同梱 plugin のマニフェスト宣言で session 開始時に起動するため、ユーザ／Claude が起動忘れを起こす経路を持たない。
+- **受信側の取りこぼし**: ポーリング型のため、受信側 Claude が `tsuji read` を叩くのを忘れるとメッセージが永遠に届かない。これに対する補助として、v1 では Claude Code plugin として `tsuji read --follow --from-now` を Monitor tool 経由で自動起動する（FR-014）。Monitor は同梱 plugin のマニフェスト宣言で session 開始時に起動するため、ユーザ／Claude が起動忘れを起こす経路を持たない。（v0.3 改定: 自動起動は manifest 宣言ではなく、/tsuji:join・/tsuji:start 実行時に Monitor を動的起動する形へ変更。channel と自分のハンドルはセッションの文脈で保持する。FR-014 参照。）
 - **存在しないチャンネル読み込み**: まだ誰も書いたことのないチャンネル名で `tsuji read` を叩いた場合、エラーではなく「メッセージ無し」として安全に応答する。
 - **`--as <name>` 衝突**: 同じセッションが複数の名前を名乗ったり、別セッションが同じ名前を名乗ったりすることを技術的に禁止はしない（名前は単なるラベル）。整合性はユーザ運用に委ねる。
 
@@ -111,12 +111,16 @@
 - **FR-011**: System MUST 認証・権限管理は持たない（同一ユーザ・同一マシン上のローカル運用前提で、信頼境界はファイルシステム権限に委ねる）。
 - **FR-012**: System SHOULD `tsuji send` / `tsuji read` の exit code および stderr で、Claude Code が成功・失敗を判定できるシグナルを返す。
 - **FR-013**: System MUST 受信側が「思い出して読みに行く」ポーリングモデルを基本とし、watch 常駐プロセスは提供しない。
-- **FR-014**: System MUST 受信側 Claude が新着メッセージを継続的に取得するための補助として、v1 に Claude Code plugin（`claude-plugin/`）を同梱する。plugin は `monitors/monitors.json` で Monitor tool を宣言し、セッション開始時に `tsuji read --channel <user_config.channel> --follow --from-now` をバックグラウンドで起動して、新着行を Claude セッションに surface する。`/loop` や `ScheduleWakeup`、Stop hook 連携は採用しない。
+- **FR-014**: System MUST 受信側 Claude が新着メッセージを継続的に取得するための補助として、v1 に Claude Code plugin（`claude-plugin/`）を同梱する。plugin は `monitors/monitors.json` で Monitor tool を宣言し、セッション開始時に `tsuji read --channel <user_config.channel> --follow --from-now` をバックグラウンドで起動して、新着行を Claude セッションに surface する。`/loop` や `ScheduleWakeup`、Stop hook 連携は採用しない。（v0.3 改定: 固定チャンネルの manifest Monitor は廃止。listen は plugin の /tsuji:join・/tsuji:start が実行時に Monitor tool を動的起動して開始する。channel と自分のハンドルはセッションの文脈で保持する。）
 - **FR-015**: System MUST チャンネルログの保存ルートを、デフォルトで `$XDG_DATA_HOME/tsuji/`（未設定時は `~/.local/share/tsuji/`）に置く。`--root <path>` コマンドラインオプションおよび `TSUJI_ROOT` 環境変数を提供し、その値で上書きできる（優先度: コマンドライン > 環境変数 > デフォルト）。
 - **FR-016**: System MUST 指定された保存ルート配下に存在しないチャンネルへの `send` 時、必要なディレクトリ・ファイルを自動的に作成する（保存ルート自体が存在しない場合も含む）。
 - **FR-017**: System MUST メッセージ本文として改行を含む任意長のプレーンテキストを受理する。本文は JSON Lines の 1 行に収まるように JSON 文字列としてエスケープ保存し、`read` 時には改行を含む元のテキストへ復元して出力する。添付ファイル参照や構造化メタデータ（key-value 拡張フィールド）は v1 では受理しない。
 - **FR-018**: System MUST `tsuji read` の出力形式を切り替える `--pretty` フラグを提供する。`--pretty` 指定時は人間可読フォーマット（少なくともタイムスタンプ・送信者・本文を可読に並べた形）で出力し、未指定時は JSON Lines を出力する。
-- **FR-019**: System MUST `tsuji read --follow` と併用可能な `--from-now` フラグを提供する。`--from-now` 指定時は実行開始時点の末尾までを cursor として確定し、既存メッセージを stdout に emit せず、それ以降に追加された新着メッセージのみを emit する。`--follow` 抜きで `--from-now` を指定した場合は CLI が引数エラー（exit code 非ゼロ）で拒否する。Monitor tool（FR-014）が過去ログをセッションに流し込まないために用いる。
+- **FR-019**: System MUST `tsuji read --follow` と併用可能な `--from-now` フラグを提供する。`--from-now` 指定時は実行開始時点の末尾までを cursor として確定し、既存メッセージを stdout に emit せず、それ以降に追加された新着メッセージのみを emit する。`--follow` 抜きで `--from-now` を指定した場合は CLI が引数エラー（exit code 非ゼロ）で拒否する。Monitor tool（FR-014）が過去ログをセッションに流し込まないために用いる。（--from-now は引き続き Monitor 起動時に過去ログを emit しないために使う。起動主体が manifest から /tsuji:join・/tsuji:start に変わった点のみ改定。）
+- **FR-020**: System MUST `tsuji members --channel <name>` で当該チャンネルの発言者
+  （distinct な `from`）を集計し、各人の発言数・最初/最後の発言 ID とタイムスタンプを
+  `last_id` 降順の JSON Lines（`--pretty` で人間可読）で出力する。これはプレゼンス機構
+  ではなく「発言履歴からの導出」であり、`/tsuji:status` のメンバー一覧の基盤となる。
 
 ### Key Entities *(include if feature involves data)*
 
