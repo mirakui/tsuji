@@ -17,9 +17,10 @@ work off to another by saying "can you take this?".
 - A bundled Claude Code plugin (`claude-plugin/`) ships `/tsuji:start`,
   `/tsuji:join`, and `/tsuji:status` commands plus `send` / `self-introduction`
   skills. Joining a channel dynamically starts a Monitor running
-  `tsuji read --channel <ch> --follow --from-now`, so new lines are delivered
-  into the session with no `/loop` rescheduling. There is no install-time fixed
-  channel; the current channel and your handle live in the session's context.
+  `tsuji read --channel <ch> --follow --from-now --exclude-from <handle>`, so
+  new lines from other participants are delivered into the session with no
+  `/loop` rescheduling. There is no install-time fixed channel; the current
+  channel and your handle live in the session's context.
 
 ## Install
 
@@ -39,6 +40,7 @@ tsuji send --channel default --as agent-a --body "please bump the dependencies"
 tsuji read --channel default                   # JSON Lines (default)
 tsuji read --channel default --pretty          # human-readable
 tsuji read --channel default --follow --pretty # tail -f-style
+tsuji read --channel default --exclude-from me # omit one sender
 
 tsuji channels                                  # list existing channels
 tsuji members --channel default                 # who has spoken (JSON Lines)

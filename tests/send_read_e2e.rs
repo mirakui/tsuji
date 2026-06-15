@@ -177,6 +177,43 @@ fn body_dash_reads_message_from_stdin() {
 }
 
 #[test]
+fn read_exclude_from_omits_matching_sender_without_changing_storage() {
+    let dir = tempdir().unwrap();
+    for (from, body) in [
+        ("agent-a", "own message"),
+        ("agent-b", "other message"),
+        ("agent-a", "own followup"),
+    ] {
+        cmd(dir.path())
+            .args(["send", "--channel", "default", "--as", from, "--body", body])
+            .assert()
+            .success();
+    }
+
+    let out = cmd(dir.path())
+        .args(["read", "--channel", "default", "--exclude-from", "agent-a"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(out.get_output().stdout.clone()).unwrap();
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 1, "expected only other sender, got {stdout:?}");
+    let v: Value = serde_json::from_str(lines[0]).unwrap();
+    assert_eq!(v.get("from").and_then(Value::as_str), Some("agent-b"));
+    assert_eq!(v.get("body").and_then(Value::as_str), Some("other message"));
+
+    let out = cmd(dir.path())
+        .args(["read", "--channel", "default"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(out.get_output().stdout.clone()).unwrap();
+    assert_eq!(
+        stdout.lines().count(),
+        3,
+        "omitting --exclude-from must still read all stored messages"
+    );
+}
+
+#[test]
 fn bare_trailing_dash_is_rejected_as_arg_error() {
     // A bare positional `-` is NOT a valid way to read stdin; clap rejects it with
     // exit code 2. This is why the send skill must use `--body -` instead.

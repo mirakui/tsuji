@@ -103,3 +103,19 @@ fn join_and_start_commands_require_persistent_monitor() {
         );
     }
 }
+
+#[test]
+fn join_and_start_monitors_exclude_current_handle() {
+    for name in ["join", "start"] {
+        let path = plugin_dir().join("commands").join(format!("{name}.md"));
+        let body = fs::read_to_string(&path).unwrap();
+        assert!(
+            body.contains("--exclude-from"),
+            "{name}.md Monitor command must exclude this session's handle"
+        );
+        assert!(
+            body.contains("including your own"),
+            "{name}.md must document that omitting --exclude-from reads all messages"
+        );
+    }
+}

@@ -72,7 +72,7 @@ tsuji send --channel <NAME> --as <SENDER> [--body <TEXT> | -]
 メッセージを取得する。デフォルトはチャンネル先頭から末尾まで、JSON Lines で stdout に出力。
 
 ```text
-tsuji read --channel <NAME> [--since <ULID>] [--pretty] [--follow]
+tsuji read --channel <NAME> [--since <ULID>] [--pretty] [--follow] [--exclude-from <SENDER>]
 ```
 
 | Arg | Required | Description |
@@ -81,6 +81,7 @@ tsuji read --channel <NAME> [--since <ULID>] [--pretty] [--follow]
 | `--since <ULID>` | no | 指定 ULID `より後` のメッセージのみ返す（境界除外）。形式不正は exit 1。指す ULID が存在しないメッセージでもエラーにはならず、辞書順 > 指定値の行を返す（spec Edge Case）。 |
 | `--pretty` | no | 出力形式を人間可読に切り替える（FR-018）。各メッセージを `[<ts>] <from>: <body>` 形式の複数行ブロックで出力。 |
 | `--follow` | no | ファイル末尾到達後も最大 2 秒以下のポーリング間隔で監視を続け、新着メッセージを逐次出力（FR-010、SC-005）。`SIGINT` で停止。 |
+| `--exclude-from <SENDER>` | no | 指定 sender のメッセージを出力から除外する。保存済み JSON Lines は変更しない。省略すると自分自身を含む全メッセージを読む。 |
 
 **Behavior**:
 
@@ -88,13 +89,15 @@ tsuji read --channel <NAME> [--since <ULID>] [--pretty] [--follow]
 2. `<root>/<channel>.jsonl` を読み取り専用で開く。
    - 存在しない場合: stdout 空、exit 0。
 3. 行をストリーム読みし、`--since` 指定があれば `id > <since>`（文字列辞書順）を満たす行のみ採用。
-4. `--pretty` 未指定時はパースした JSON Lines を **そのまま** stdout に書き出す（serde で再シリアライズし、未知フィールドの将来互換を保つ）。
-5. `--pretty` 指定時は人間可読フォーマットで書き出す。
-6. `--follow` 指定時は EOF 後も sleep + tail を継続。
+4. `--exclude-from` 指定があれば `from` が一致する行を stdout から除外する。
+5. `--pretty` 未指定時はパースした JSON Lines を **そのまま** stdout に書き出す（serde で再シリアライズし、未知フィールドの将来互換を保つ）。
+6. `--pretty` 指定時は人間可読フォーマットで書き出す。
+7. `--follow` 指定時は EOF 後も sleep + tail を継続。除外されたメッセージも cursor は進めるため、同じメッセージを再処理しない。
 
 **Errors**:
 
 - 不正な `--since` 形式: exit 1。
+- 不正な `--exclude-from` sender: exit 1。
 - 既存ファイルだが不正行を含む: 不正行をスキップしつつ正常行を出力し、stderr に warning（Edge Case「不正な JSON 行」）。exit code は 0（処理続行）。
 - I/O 失敗: exit 1。
 
