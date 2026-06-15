@@ -228,6 +228,89 @@ fn follow_with_from_now_skips_existing_messages() {
 }
 
 #[test]
+fn follow_exclude_from_skips_own_messages_but_surfaces_others() {
+    let dir = tempdir().unwrap();
+    let exe = assert_cmd::cargo::cargo_bin("tsuji");
+    let mut child = StdCommand::new(&exe)
+        .env_remove("TSUJI_ROOT")
+        .env_remove("XDG_DATA_HOME")
+        .arg("--root")
+        .arg(dir.path())
+        .args([
+            "read",
+            "--channel",
+            "default",
+            "--follow",
+            "--from-now",
+            "--exclude-from",
+            "agent-a",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    std::thread::sleep(Duration::from_millis(600));
+
+    cmd(dir.path())
+        .args([
+            "send",
+            "--channel",
+            "default",
+            "--as",
+            "agent-a",
+            "--body",
+            "own-after",
+        ])
+        .assert()
+        .success();
+    cmd(dir.path())
+        .args([
+            "send",
+            "--channel",
+            "default",
+            "--as",
+            "agent-b",
+            "--body",
+            "other-after",
+        ])
+        .assert()
+        .success();
+
+    let mut reader = child.stdout.take().unwrap();
+    let mut buf = Vec::new();
+    let deadline = Instant::now() + Duration::from_secs(2);
+    let mut got = String::new();
+    while Instant::now() < deadline {
+        let mut chunk = [0u8; 1024];
+        std::thread::sleep(Duration::from_millis(100));
+        match reader.read(&mut chunk) {
+            Ok(0) => continue,
+            Ok(n) => {
+                buf.extend_from_slice(&chunk[..n]);
+                got = String::from_utf8_lossy(&buf).to_string();
+                if got.contains("other-after") {
+                    break;
+                }
+            }
+            Err(_) => continue,
+        }
+    }
+
+    let _ = child.kill();
+    let _ = child.wait();
+
+    assert!(
+        got.contains("other-after"),
+        "follow --exclude-from did not surface the other message within 2s; got: {got:?}"
+    );
+    assert!(
+        !got.contains("own-after"),
+        "follow --exclude-from surfaced the excluded sender; got: {got:?}"
+    );
+}
+
+#[test]
 fn from_now_requires_follow() {
     let dir = tempdir().unwrap();
     // Without --follow, --from-now is meaningless and must be rejected by clap

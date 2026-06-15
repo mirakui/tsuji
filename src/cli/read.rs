@@ -34,12 +34,19 @@ pub struct ReadArgs {
     /// arrive after this command starts.
     #[arg(long = "from-now", requires = "follow")]
     pub from_now: bool,
+
+    /// Omit messages sent by this sender from read output.
+    #[arg(long = "exclude-from", value_name = "SENDER")]
+    pub exclude_from: Option<String>,
 }
 
 pub fn run(root: &Path, args: ReadArgs) -> Result<ExitCode> {
     crate::cli::validate_channel_name(&args.channel)?;
     if let Some(s) = args.since.as_deref() {
         crate::cli::validate_ulid_string(s)?;
+    }
+    if let Some(sender) = args.exclude_from.as_deref() {
+        crate::cli::validate_sender(sender)?;
     }
 
     let mut cursor = args.since.clone();
@@ -55,6 +62,9 @@ pub fn run(root: &Path, args: ReadArgs) -> Result<ExitCode> {
         }
     } else {
         for m in &messages {
+            if should_exclude(m, args.exclude_from.as_deref()) {
+                continue;
+            }
             emit(&mut handle, m, args.pretty)?;
         }
         handle.flush()?;
@@ -77,6 +87,9 @@ pub fn run(root: &Path, args: ReadArgs) -> Result<ExitCode> {
         std::thread::sleep(Duration::from_millis(500));
         let new_messages = filter_since(read_messages(root, &args.channel)?, cursor.as_deref());
         for m in &new_messages {
+            if should_exclude(m, args.exclude_from.as_deref()) {
+                continue;
+            }
             emit(&mut handle, m, args.pretty)?;
         }
         handle.flush()?;
@@ -86,6 +99,10 @@ pub fn run(root: &Path, args: ReadArgs) -> Result<ExitCode> {
     }
 
     Ok(ExitCode::Ok)
+}
+
+fn should_exclude(m: &Message, exclude_from: Option<&str>) -> bool {
+    exclude_from.is_some_and(|sender| m.from == sender)
 }
 
 fn emit<W: Write>(w: &mut W, m: &Message, pretty: bool) -> io::Result<()> {

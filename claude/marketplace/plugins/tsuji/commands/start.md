@@ -25,9 +25,11 @@ Do the following, in order:
    Use these for every later `/tsuji:send` and `/tsuji:self-introduction`.
 
 4. Start background monitoring: invoke the **Monitor** tool with the command
-   `tsuji read --channel <channel> --follow --from-now` and `persistent: true`.
+   `tsuji read --channel <channel> --follow --from-now --exclude-from <handle>` and `persistent: true`.
+   Substitute the actual channel from step 1 and handle from step 2.
    `persistent: true` is REQUIRED — without it the Monitor times out after ~5 minutes (default `timeout_ms`) and listening silently stops.
-   While it runs, IGNORE any surfaced line whose `from` equals your own handle (never react to your own messages). React only to messages addressed to your handle or that are tasks for you; ignore unrelated chatter.
+   The `--exclude-from` flag keeps your own sent messages out of Monitor notifications; omit that flag only when explicitly reading everything, including your own messages.
+   React only to messages addressed to your handle or that are tasks for you; ignore unrelated chatter.
 
 5. Introduce yourself by invoking the **tsuji:self-introduction** skill.
 
