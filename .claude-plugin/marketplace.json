@@ -1,0 +1,18 @@
+{
+  "name": "tsuji-marketplace",
+  "owner": {
+    "name": "Issei Naruta"
+  },
+  "metadata": {
+    "description": "tsuji: Inter-session chat for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "tsuji",
+      "source": "./claude/marketplace/plugins/tsuji",
+      "description": "Provides /tsuji:start, /tsuji:join, /tsuji:status commands and send / self-introduction skills on top of the tsuji CLI. Listening starts dynamically when you join a channel.",
+      "version": "0.3.0",
+      "license": "MIT"
+    }
+  ]
+}

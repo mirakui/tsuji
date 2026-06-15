@@ -148,6 +148,47 @@ fn empty_body_is_rejected() {
 }
 
 #[test]
+fn body_dash_reads_message_from_stdin() {
+    // The plugin's send skill pipes the body on stdin via `--body -`; this is the
+    // contract that behavior depends on.
+    let dir = tempdir().unwrap();
+    cmd(dir.path())
+        .args([
+            "send",
+            "--channel",
+            "default",
+            "--as",
+            "agent-a",
+            "--body",
+            "-",
+        ])
+        .write_stdin("piped body\n")
+        .assert()
+        .success();
+
+    let out = cmd(dir.path())
+        .args(["read", "--channel", "default"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(out.get_output().stdout.clone()).unwrap();
+    let v: Value = serde_json::from_str(stdout.lines().next().unwrap()).unwrap();
+    // read_stdin trims a single trailing newline that shells/pipes add.
+    assert_eq!(v.get("body").and_then(Value::as_str), Some("piped body"));
+}
+
+#[test]
+fn bare_trailing_dash_is_rejected_as_arg_error() {
+    // A bare positional `-` is NOT a valid way to read stdin; clap rejects it with
+    // exit code 2. This is why the send skill must use `--body -` instead.
+    let dir = tempdir().unwrap();
+    cmd(dir.path())
+        .args(["send", "--channel", "default", "--as", "agent-a", "-"])
+        .write_stdin("ignored\n")
+        .assert()
+        .code(2);
+}
+
+#[test]
 fn invalid_channel_name_is_rejected() {
     let dir = tempdir().unwrap();
     cmd(dir.path())
