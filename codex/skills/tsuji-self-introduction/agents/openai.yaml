@@ -1,0 +1,4 @@
+interface:
+  display_name: "tsuji Self Introduction"
+  short_description: "Introduce this Codex session in tsuji"
+  default_prompt: "Use $tsuji-self-introduction to introduce this Codex session in the current tsuji channel."

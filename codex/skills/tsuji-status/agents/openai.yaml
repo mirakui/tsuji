@@ -1,0 +1,4 @@
+interface:
+  display_name: "tsuji Status"
+  short_description: "Inspect tsuji channel members and history"
+  default_prompt: "Use $tsuji-status to inspect members and recent messages in the current tsuji channel."

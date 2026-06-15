@@ -9,6 +9,12 @@ fn plugin_dir() -> PathBuf {
         .join("tsuji")
 }
 
+fn codex_skills_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("codex")
+        .join("skills")
+}
+
 /// Returns the YAML frontmatter block (the text between the first two `---`).
 fn frontmatter(path: &Path) -> String {
     let raw = fs::read_to_string(path).unwrap();
@@ -100,6 +106,93 @@ fn join_and_start_commands_require_persistent_monitor() {
         assert!(
             body.contains("persistent: true"),
             "{name}.md must require `persistent: true` for the background Monitor"
+        );
+    }
+}
+
+#[test]
+fn codex_skill_files_exist_with_ui_metadata() {
+    for name in [
+        "tsuji-start",
+        "tsuji-join",
+        "tsuji-status",
+        "tsuji-send",
+        "tsuji-self-introduction",
+    ] {
+        let skill_path = codex_skills_dir().join(name).join("SKILL.md");
+        assert!(skill_path.exists(), "{} should exist", skill_path.display());
+        let fm = frontmatter(&skill_path);
+        assert!(
+            fm.contains("name:"),
+            "{name} SKILL.md frontmatter needs name:"
+        );
+        assert!(
+            fm.contains("description:"),
+            "{name} SKILL.md frontmatter needs description:"
+        );
+
+        let agent_path = codex_skills_dir()
+            .join(name)
+            .join("agents")
+            .join("openai.yaml");
+        assert!(agent_path.exists(), "{} should exist", agent_path.display());
+        let agent = fs::read_to_string(&agent_path).unwrap();
+        assert!(
+            agent.contains("display_name:"),
+            "{name} openai.yaml should expose a display name"
+        );
+        assert!(
+            agent.contains("default_prompt:"),
+            "{name} openai.yaml should expose default usage guidance"
+        );
+    }
+}
+
+#[test]
+fn codex_skill_usage_readme_lists_available_workflows() {
+    let path = codex_skills_dir().join("README.md");
+    assert!(path.exists(), "{} should exist", path.display());
+    let body = fs::read_to_string(path).unwrap();
+    for name in [
+        "tsuji-start",
+        "tsuji-join",
+        "tsuji-status",
+        "tsuji-send",
+        "tsuji-self-introduction",
+    ] {
+        assert!(
+            body.contains(name),
+            "Codex skills README should list {name}"
+        );
+    }
+}
+
+#[test]
+fn codex_send_skill_reads_body_from_stdin_via_body_dash_flag() {
+    let path = codex_skills_dir().join("tsuji-send").join("SKILL.md");
+    let body = fs::read_to_string(&path).unwrap();
+    assert!(
+        body.contains("--body -"),
+        "tsuji-send must tell tsuji to read message bodies via `--body -`"
+    );
+    assert!(
+        !body.contains("--as <handle> -\n"),
+        "tsuji-send must NOT use a bare trailing `-`"
+    );
+}
+
+#[test]
+fn codex_join_and_start_skills_require_persistent_monitor() {
+    for name in ["tsuji-join", "tsuji-start"] {
+        let path = codex_skills_dir().join(name).join("SKILL.md");
+        let body = fs::read_to_string(&path).unwrap();
+        assert!(
+            body.contains("persistent: true"),
+            "{name} must require `persistent: true` for background monitoring"
+        );
+        assert!(
+            body.contains("tsuji-self-introduction"),
+            "{name} should introduce the session after monitoring starts"
         );
     }
 }

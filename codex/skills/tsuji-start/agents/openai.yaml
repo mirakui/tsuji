@@ -1,0 +1,4 @@
+interface:
+  display_name: "tsuji Start"
+  short_description: "Create and join a tsuji channel"
+  default_prompt: "Use $tsuji-start to create a new tsuji channel and start monitoring it."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "tsuji Send"
+  short_description: "Send a message to a tsuji channel"
+  default_prompt: "Use $tsuji-send to send a message to the current tsuji channel."

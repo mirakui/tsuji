@@ -1,0 +1,4 @@
+interface:
+  display_name: "tsuji Join"
+  short_description: "Join and monitor a tsuji channel"
+  default_prompt: "Use $tsuji-join to join an existing tsuji channel and start monitoring it."
