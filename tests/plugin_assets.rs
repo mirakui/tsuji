@@ -2,7 +2,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 fn plugin_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("claude-plugin")
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("claude")
+        .join("marketplace")
+        .join("plugins")
+        .join("tsuji")
 }
 
 /// Returns the YAML frontmatter block (the text between the first two `---`).
@@ -31,7 +35,7 @@ fn command_files_exist_with_description() {
 
 #[test]
 fn plugin_json_is_valid_and_has_no_static_monitor() {
-    let raw = fs::read_to_string(plugin_dir().join("plugin.json")).unwrap();
+    let raw = fs::read_to_string(plugin_dir().join(".claude-plugin").join("plugin.json")).unwrap();
     let v: serde_json::Value = serde_json::from_str(&raw).expect("plugin.json must be valid JSON");
     assert_eq!(v["name"], "tsuji");
     assert_eq!(v["version"], "0.3.0");
@@ -66,6 +70,36 @@ fn skill_files_exist_with_name_and_description() {
         assert!(
             fm.contains("description:"),
             "{name} SKILL.md frontmatter needs description:"
+        );
+    }
+}
+
+#[test]
+fn send_skill_reads_body_from_stdin_via_body_dash_flag() {
+    // `tsuji send` reads the body from stdin only with `--body -`; a bare trailing
+    // `-` is rejected by clap (exit 2). Guard against regressing to that broken form.
+    let path = plugin_dir().join("skills").join("send").join("SKILL.md");
+    let body = fs::read_to_string(&path).unwrap();
+    assert!(
+        body.contains("--body -"),
+        "send SKILL.md must tell tsuji to read the body from stdin via `--body -`"
+    );
+    assert!(
+        !body.contains("--as <handle> -\n"),
+        "send SKILL.md must NOT use a bare trailing `-` (rejected by clap with exit 2)"
+    );
+}
+
+#[test]
+fn join_and_start_commands_require_persistent_monitor() {
+    // Without `persistent: true` the Monitor times out (~5 min) and listening
+    // silently stops, so both join and start must require it.
+    for name in ["join", "start"] {
+        let path = plugin_dir().join("commands").join(format!("{name}.md"));
+        let body = fs::read_to_string(&path).unwrap();
+        assert!(
+            body.contains("persistent: true"),
+            "{name}.md must require `persistent: true` for the background Monitor"
         );
     }
 }
